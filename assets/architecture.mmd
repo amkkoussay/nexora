@@ -1,0 +1,25 @@
+graph TD
+    subgraph Frontend [Frontend - Vanilla JS]
+        UI[UI Components - ui.js]
+        State[State Management - state.js]
+        Handlers[Event Handlers - handlers.js]
+        i18n[Internationalization - i18n.js]
+        API_Client[API Client - api.js]
+        
+        UI --> Handlers
+        Handlers --> State
+        State --> UI
+        Handlers --> API_Client
+        i18n --> UI
+    end
+
+    subgraph Backend [Backend - Node.js/Express]
+        Server[server.js]
+        Routes[API Routes]
+        Middleware[CORS, JSON Parser]
+        
+        Server --> Routes
+        Routes --> Middleware
+    end
+
+    API_Client -- "HTTP/JSON" --> Server
