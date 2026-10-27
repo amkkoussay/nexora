@@ -22,7 +22,13 @@ if (!QWEN_API_KEY) {
 }
 
 app.use(compression());
-app.use(cors());
+// CORS is restricted to local development origins only. The old open
+// cors() let any website spend this server's paid Qwen API quota through
+// /api/complete. Same-origin browsers need no CORS at all (the frontend is
+// served by this same server); localhost ports stay open for local dev.
+app.use(cors({
+    origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/]
+}));
 app.use(express.json({ limit: '200kb' }));
 
 // Basic abuse protection on the AI endpoint
@@ -92,8 +98,22 @@ app.post('/api/complete', async (req, res) => {
     }
 });
 
-// Serve the static frontend from the project root (one level up from /server)
-app.use(express.static(path.join(__dirname, '..')));
+// Serve the static frontend from the project root (one level up from
+// /server) — that root is where this app's frontend lives (index.html,
+// app.html, css/, js/, assets/), so there is no separate public/ directory
+// to point at. The old unrestricted static root also served .git, the
+// server source and committed logs. Those paths are now refused outright
+// (404, not a redirect that leaks their existence), and dotfiles are
+// denied by the static handler itself.
+app.use((req, res, next) => {
+    const p = decodeURIComponent(req.path);
+    if (p.startsWith('/.git') || p.startsWith('/server') ||
+        p.startsWith('/.') || p.endsWith('.log')) {
+        return res.status(404).end();
+    }
+    next();
+});
+app.use(express.static(path.join(__dirname, '..'), { dotfiles: 'deny' }));
 
 app.listen(PORT, () => {
     console.log(`Nexora server running at http://localhost:${PORT}`);
